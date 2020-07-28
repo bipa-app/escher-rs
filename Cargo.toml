@@ -1,9 +1,19 @@
 [package]
 name = "escher-rs"
 version = "0.1.0"
-authors = ["Luiz Parreira <luizfilipester@gmail.com>"]
+authors = ["Luiz Parreira <luiz@bipa.app>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "escher"
+
 [dependencies]
+reqwest = { version = "0.10.6", features = ["json", "blocking"]}
+chrono = { version = "0.4.11", features = ["serde"] }
+serde_json = "1.0.55"
+
+[dependencies.serde]
+version = "1.0.112"
+features = ["derive"]
