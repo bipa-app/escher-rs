@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use failure::Fail;
 use serde::de::Deserializer;
 use serde::Deserialize;
 use serde_json::json;
@@ -81,10 +82,10 @@ pub struct AcceptQuote {
     pub order: Order,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum Error {
-    NetworkingError(reqwest::Error),
-    Unknown,
+    #[fail(display = "Escher Client - API Error {}", _0)]
+    NetworkingError(#[cause] reqwest::Error),
 }
 
 impl From<reqwest::Error> for Error {
