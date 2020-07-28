@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use failure::Fail;
 use serde::de::Deserializer;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::Display;
 use std::str;
@@ -96,19 +96,11 @@ impl From<reqwest::Error> for Error {
 
 type EscherResult<Data> = Result<Data, Error>;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum Side {
     Buy,
     Sell,
-}
-
-impl ToString for Side {
-    fn to_string(&self) -> String {
-        match self {
-            Side::Buy => "buy".to_string(),
-            Side::Sell => "sell".to_string(),
-        }
-    }
 }
 
 impl Client {
@@ -135,7 +127,7 @@ impl Client {
         let params = json!({
             "product_id": product_id,
             "base_currency_size": base_currency_size,
-            "side": side.to_string()
+            "side": side
         });
 
         reqwest::blocking::Client::new()
