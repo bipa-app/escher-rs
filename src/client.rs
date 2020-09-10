@@ -145,12 +145,14 @@ impl Client {
         quote_id: String,
         quantity: Option<f32>,
     ) -> EscherResult<AcceptQuote> {
-        reqwest::blocking::Client::new()
+        let resp = reqwest::blocking::Client::new()
             .post(&format!("{}/quotes/accept", self.url))
             .json(&json!({"quote_id": quote_id, "quantity" : quantity}))
             .header("i2-ACCESS-KEY", access_token)
-            .send()?
-            .json::<AcceptQuote>()
-            .map_err(Into::into)
+            .send()?;
+
+        println!("{:?}", resp);
+
+        resp.json::<AcceptQuote>().map_err(Into::into)
     }
 }
