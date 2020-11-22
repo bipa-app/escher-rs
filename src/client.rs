@@ -15,10 +15,6 @@ pub struct Client {
 #[serde(rename_all = "PascalCase")]
 pub struct AuthResult {
     pub access_token: String,
-    pub expires_in: i32,
-    pub token_type: String,
-    pub refresh_token: String,
-    pub id_token: String,
 }
 
 #[derive(Deserialize, Debug)]
