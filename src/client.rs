@@ -68,7 +68,6 @@ pub struct Order {
     pub status: String,
     #[serde(deserialize_with = "from_str")]
     pub executed_value: f32,
-    pub created_at_server: DateTime<Utc>,
 }
 
 #[derive(Deserialize, Debug)]
