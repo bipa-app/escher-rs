@@ -3,6 +3,7 @@ use failure::Fail;
 use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::fmt;
 use std::fmt::Display;
 use std::str;
 use std::str::FromStr;
@@ -15,6 +16,7 @@ pub struct Client {
 #[serde(rename_all = "PascalCase")]
 pub struct AuthResult {
     pub access_token: String,
+    pub refresh_token: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -78,10 +80,26 @@ pub struct AcceptQuote {
     pub order: Order,
 }
 
+#[derive(Deserialize, Debug, Fail)]
+pub struct EscherError {
+    pub success: bool,
+    pub message: String,
+}
+
+impl fmt::Display for EscherError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
 #[derive(Debug, Fail)]
 pub enum Error {
-    #[fail(display = "Escher Client - API Error {}", _0)]
+    #[fail(display = "JSON Decoding Error {}", _0)]
+    DecodingError(serde_json::Error),
+    #[fail(display = "NetworkingError {}", _0)]
     NetworkingError(#[cause] reqwest::Error),
+    #[fail(display = "EscherError - {}", _0)]
+    HandledError(EscherError),
 }
 
 impl From<reqwest::Error> for Error {
@@ -90,6 +108,11 @@ impl From<reqwest::Error> for Error {
     }
 }
 
+impl From<serde_json::Error> for Error {
+    fn from(error: serde_json::Error) -> Error {
+        Self::DecodingError(error)
+    }
+}
 type EscherResult<Data> = Result<Data, Error>;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -105,12 +128,40 @@ impl Client {
     }
 
     pub fn sign_in(&self, email: String, password: String) -> EscherResult<AuthResponse> {
-        reqwest::blocking::Client::new()
+        let resp = reqwest::blocking::Client::new()
             .post(&format!("{}/sign-in", self.url))
             .json(&json!({"email": email, "password": password}))
-            .send()?
-            .json::<AuthResponse>()
-            .map_err(Into::into)
+            .send()?;
+
+        let json = resp.json::<serde_json::Value>();
+
+        match json {
+            Ok(auth) => serde_json::from_value::<AuthResponse>(auth.clone()).map_err(|_| {
+                match serde_json::from_value::<EscherError>(auth) {
+                    Ok(err) => Error::HandledError(err),
+                    Err(err) => err.into(),
+                }
+            }),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    pub fn refresh_token(&self, token: String, email: String) -> EscherResult<AuthResponse> {
+        let resp = reqwest::blocking::Client::new()
+            .post(&format!("{}/sign-in", self.url))
+            .json(&json!({ "refreshToken": token, "email": email }))
+            .send()?;
+
+        let json = resp.json::<serde_json::Value>();
+        match json {
+            Ok(auth) => serde_json::from_value::<AuthResponse>(auth.clone()).map_err(|_| {
+                match serde_json::from_value::<EscherError>(auth) {
+                    Ok(err) => Error::HandledError(err),
+                    Err(err) => err.into(),
+                }
+            }),
+            Err(err) => Err(err.into()),
+        }
     }
 
     pub fn quote(
@@ -126,13 +177,20 @@ impl Client {
             "side": side
         });
 
-        reqwest::blocking::Client::new()
+        let resp = reqwest::blocking::Client::new()
             .post(&format!("{}/quotes", self.url))
             .json(&params)
             .header("i2-ACCESS-KEY", access_token)
-            .send()?
-            .json::<Quote>()
-            .map_err(Into::into)
+            .send()?;
+
+        let quote = resp.json::<serde_json::Value>()?;
+
+        serde_json::from_value::<Quote>(quote.clone()).map_err(|_| {
+            match serde_json::from_value::<EscherError>(quote) {
+                Ok(err) => Error::HandledError(err),
+                Err(err) => err.into(),
+            }
+        })
     }
 
     pub fn accept_quote(
@@ -141,12 +199,19 @@ impl Client {
         quote_id: String,
         quantity: Option<f32>,
     ) -> EscherResult<AcceptQuote> {
-        reqwest::blocking::Client::new()
+        let resp = reqwest::blocking::Client::new()
             .post(&format!("{}/quotes/accept", self.url))
             .json(&json!({"quote_id": quote_id, "quantity" : quantity}))
             .header("i2-ACCESS-KEY", access_token)
-            .send()?
-            .json::<AcceptQuote>()
-            .map_err(Into::into)
+            .send()?;
+
+        let quote = resp.json::<serde_json::Value>()?;
+
+        serde_json::from_value::<AcceptQuote>(quote.clone()).map_err(|_| {
+            match serde_json::from_value::<EscherError>(quote) {
+                Ok(err) => Error::HandledError(err),
+                Err(err) => err.into(),
+            }
+        })
     }
 }
