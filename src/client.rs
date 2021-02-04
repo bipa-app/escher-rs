@@ -126,44 +126,41 @@ impl Client {
         Self { url }
     }
 
-    pub fn sign_in(&self, email: String, password: String) -> EscherResult<AuthResponse> {
-        let resp = reqwest::blocking::Client::new()
+    pub async fn sign_in(&self, email: String, password: String) -> EscherResult<AuthResponse> {
+        let auth = reqwest::Client::new()
             .post(&format!("{}/sign-in", self.url))
             .json(&json!({"email": email, "password": password}))
-            .send()?;
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
 
-        let json = resp.json::<serde_json::Value>();
-
-        match json {
-            Ok(auth) => serde_json::from_value::<AuthResponse>(auth.clone()).map_err(|_| {
-                match serde_json::from_value::<EscherError>(auth) {
-                    Ok(err) => Error::HandledError(err),
-                    Err(err) => err.into(),
-                }
-            }),
-            Err(err) => Err(err.into()),
-        }
+        serde_json::from_value::<AuthResponse>(auth.clone()).map_err(|_| {
+            match serde_json::from_value::<EscherError>(auth) {
+                Ok(err) => Error::HandledError(err),
+                Err(err) => err.into(),
+            }
+        })
     }
 
-    pub fn refresh_token(&self, token: String, email: String) -> EscherResult<AuthResponse> {
-        let resp = reqwest::blocking::Client::new()
+    pub async fn refresh_token(&self, token: String, email: String) -> EscherResult<AuthResponse> {
+        let auth = reqwest::Client::new()
             .post(&format!("{}/sign-in", self.url))
             .json(&json!({ "refreshToken": token, "email": email }))
-            .send()?;
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
 
-        let json = resp.json::<serde_json::Value>();
-        match json {
-            Ok(auth) => serde_json::from_value::<AuthResponse>(auth.clone()).map_err(|_| {
-                match serde_json::from_value::<EscherError>(auth) {
-                    Ok(err) => Error::HandledError(err),
-                    Err(err) => err.into(),
-                }
-            }),
-            Err(err) => Err(err.into()),
-        }
+        serde_json::from_value::<AuthResponse>(auth.clone()).map_err(|_| {
+            match serde_json::from_value::<EscherError>(auth) {
+                Ok(err) => Error::HandledError(err),
+                Err(err) => err.into(),
+            }
+        })
     }
 
-    pub fn quote(
+    pub async fn quote(
         &self,
         access_token: String,
         product_id: String,
@@ -176,13 +173,14 @@ impl Client {
             "side": side
         });
 
-        let resp = reqwest::blocking::Client::new()
+        let quote = reqwest::Client::new()
             .post(&format!("{}/quotes", self.url))
             .json(&params)
             .header("i2-ACCESS-KEY", access_token)
-            .send()?;
-
-        let quote = resp.json::<serde_json::Value>()?;
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
 
         serde_json::from_value::<Quote>(quote.clone()).map_err(|_| {
             match serde_json::from_value::<EscherError>(quote) {
@@ -192,19 +190,20 @@ impl Client {
         })
     }
 
-    pub fn accept_quote(
+    pub async fn accept_quote(
         &self,
         access_token: String,
         quote_id: String,
         quantity: Option<f32>,
     ) -> EscherResult<AcceptQuote> {
-        let resp = reqwest::blocking::Client::new()
+        let quote = reqwest::Client::new()
             .post(&format!("{}/quotes/accept", self.url))
             .json(&json!({"quote_id": quote_id, "quantity" : quantity}))
             .header("i2-ACCESS-KEY", access_token)
-            .send()?;
-
-        let quote = resp.json::<serde_json::Value>()?;
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
 
         serde_json::from_value::<AcceptQuote>(quote.clone()).map_err(|_| {
             match serde_json::from_value::<EscherError>(quote) {
