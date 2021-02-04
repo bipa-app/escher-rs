@@ -10,10 +10,16 @@ edition = "2018"
 name = "escher"
 
 [dependencies]
-reqwest = { version = "0.10.6", features = ["json", "blocking"]}
-chrono = { version = "0.4.11", features = ["serde"] }
 serde_json = "1.0.56"
 failure = "0.1.1"
+
+[dependencies.reqwest]
+version = "0.10.10"
+features = ["json"]
+
+[dependencies.chrono]
+version = "0.4.11"
+features = ["serde"]
 
 [dependencies.serde]
 version = "1.0.115"
