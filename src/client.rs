@@ -1,5 +1,4 @@
 use chrono::{DateTime, Utc};
-use failure::Fail;
 use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -79,7 +78,7 @@ pub struct AcceptQuote {
     pub order: Order,
 }
 
-#[derive(Deserialize, Debug, Fail)]
+#[derive(Deserialize, Debug, thiserror::Error)]
 pub struct EscherError {
     pub success: bool,
     pub message: String,
@@ -91,13 +90,13 @@ impl fmt::Display for EscherError {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[fail(display = "JSON Decoding Error {}", _0)]
+    #[error("JSON Decoding Error {0}")]
     DecodingError(serde_json::Error),
-    #[fail(display = "NetworkingError {}", _0)]
-    NetworkingError(#[cause] reqwest::Error),
-    #[fail(display = "EscherError - {}", _0)]
+    #[error("NetworkingError {0}")]
+    NetworkingError(reqwest::Error),
+    #[error("EscherError - {0}")]
     HandledError(EscherError),
 }
 
